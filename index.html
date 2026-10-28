@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AxMxP 銷量監控</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #0f172a; color: #ffffff; padding: 16px; margin: 0; }
+  h1 { font-size: 22px; text-align: center; margin-bottom: 5px; color: #ffffff; }
+  .sub { text-align: center; color: #94a3b8; font-size: 12px; margin-bottom: 20px; }
+  
+  .member-section { margin-bottom: 40px; }
+  
+  .member-title { 
+    font-size: 24px; font-weight: bold; text-align: center; 
+    margin-bottom: 15px; padding-bottom: 10px; border-bottom: 3px solid #3b82f6;
+    color: #60a5fa;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; background: #1e293b; border-radius: 8px; overflow: hidden; }
+  th, td { border: 1px solid #334155; padding: 10px; text-align: center; }
+  th { background: #0f172a; font-weight: bold; color: #94a3b8; }
+  
+  .delta { color: #4ade80; font-weight: bold; font-size: 16px; }
+  .total { font-size: 36px; color: #fbbf24; font-weight: bold; }
+</style>
+</head>
+<body>
+  <h1>AxMxP 簽名會 銷量監控</h1>
+  <div class="sub" id="time">載入中...</div>
+  
+  <div id="members-container"></div>
+
+<script>
+async function load() {
+  try {
+    const res = await fetch('kmonstar_sales.csv?t=' + Date.now());
+    const text = await res.text();
+    const lines = text.trim().split('\n');
+    
+    if (lines.length < 2) {
+      document.getElementById('time').innerText = "目前還沒有資料，請等待機器人抓取。";
+      return;
+    }
+    
+    const headers = lines[0].split(',');
+    const rows = lines.slice(1).map(l => {
+      const cols = l.split(',');
+      let obj = {};
+      headers.forEach((h, i) => obj[h.trim()] = cols[i]);
+      return obj;
+    });
+
+    document.getElementById('time').innerText = '最後更新：' + rows[rows.length - 1].time;
+    
+    const container = document.getElementById('members-container');
+    container.innerHTML = '';
+
+    const latest = rows[rows.length - 1];
+
+    let tableHTML = `
+      <div class="member-section">
+        <div class="member-title">AxMxP 簽名會 總銷量</div>
+        
+        <div style="text-align: center; margin-bottom: 20px;">
+          <span class="total">${latest.total_sold}</span> <span style="font-size: 18px; color: #94a3b8;">張</span>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>時間</th>
+              <th>累積總銷量</th>
+              <th>本次增加</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    const reversedRows = [...rows].reverse();
+    
+    reversedRows.forEach(r => {
+      const deltaDisplay = r.delta > 0 ? `<span class="delta">+${r.delta}</span>` : `+0`;
+      
+      tableHTML += `
+            <tr>
+              <td style="color: #94a3b8;">${r.time.split(' ')[1]}</td>
+              <td>${r.total_sold}</td>
+              <td>${deltaDisplay}</td>
+            </tr>
+      `;
+    });
+
+    tableHTML += `
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    container.innerHTML = tableHTML;
+
+  } catch (e) { 
+    console.error(e);
+    document.getElementById('time').innerText = "資料載入失敗";
+  }
+}
+load();
+setInterval(load, 60000);
+</script>
+</body>
+</html>
